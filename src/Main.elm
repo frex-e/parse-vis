@@ -3,21 +3,30 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 -- import Html.Attributes exposing (..)
 -- import Html.Events exposing (..)
 
-import Basic exposing (parse)
+import Basic
 import Browser
-import Element exposing (column, el, fill, focused, height, htmlAttribute, padding, px, rgb, row, text, width)
+import Dict
+import Display exposing (treeCanvas)
+import Element exposing (column, el, fill, focused, height, html, htmlAttribute, padding, paragraph, rgb, row, text, width)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input exposing (button, labelHidden, multiline)
 import Html exposing (Html)
 import Html.Events
 import Json.Decode as Decode
-import Parser
+import Precedence
+import Shared exposing (LayoutNode, Mode, ParserResult)
+import Tree exposing (Tree(..))
 
 
 
 -- MAIN
+
+
+modes =
+    [ Basic.mode, Precedence.mode ]
 
 
 main =
@@ -27,6 +36,8 @@ main =
 type alias Model =
     { content : String
     , result : String
+    , tree : ParserResult (Tree LayoutNode)
+    , mode : Mode
     }
 
 
@@ -34,26 +45,35 @@ init : Model
 init =
     { content = ""
     , result = ""
+    , tree = Err []
+    , mode = Basic.mode
     }
 
 
 type Msg
-    = Change String
+    = EditCode String
     | None
     | Run
+    | ChangeMode Mode
 
 
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        Change str ->
+        EditCode str ->
             { model | content = str }
 
         None ->
             model
 
+        ChangeMode m ->
+            { init | mode = m }
+
         Run ->
-            { model | result = Basic.parse model.content }
+            { model
+                | tree = model.mode.createTree model.content
+                , result = model.mode.evaluate model.content
+            }
 
 
 view : Model -> Html Msg
@@ -72,20 +92,34 @@ view model =
                 , onShiftEnter Run
                 ]
                 { text = model.content
-                , onChange = Change
+                , onChange = EditCode
                 , placeholder = Nothing
                 , label = labelHidden "Code"
                 , spellcheck = False
                 }
 
         resultBox =
-            el [ Background.color (rgb 0.1 0.1 0.1), height fill, width fill ] (text model.result)
+            paragraph
+                [ Background.color (rgb 0.1 0.1 0.1)
+                , height fill
+                , width fill
+                ]
+                [ text model.result ]
 
         runButton =
             button [ padding 4 ] { onPress = Just Run, label = text "Run" }
 
         buttonRow =
             row [ width fill, Background.color (rgb 0.3 0.3 0.3) ] [ runButton ]
+
+        navbar =
+            row
+                [ width fill
+                , padding 2
+                , Background.color (rgb 0.2 0.2 0.2)
+                ]
+                -- TODO Change to button
+                (List.map (\m -> el [ onClick <| ChangeMode m ] (text m.name)) modes)
     in
     -- Main Layout
     --
@@ -95,20 +129,23 @@ view model =
         , Font.color (rgb 0.7 0.7 0.7)
         , Font.size 16
         ]
-        (row [ width fill, height fill ]
-            [ column
-                [ width fill
-                , height fill
-                , Border.widthEach { left = 0, right = 2, top = 0, bottom = 0 }
-                , Border.color (rgb 0 0 0)
-                ]
-                [ column [ width fill, height fill ]
-                    [ textBox
-                    , buttonRow
+        (column [ width fill, height fill ]
+            [ navbar
+            , row [ width fill, height fill ]
+                [ column
+                    [ width fill
+                    , height fill
+                    , Border.widthEach { left = 0, right = 2, top = 0, bottom = 0 }
+                    , Border.color (rgb 0 0 0)
                     ]
-                , resultBox
+                    [ column [ width fill, height fill ]
+                        [ textBox
+                        , buttonRow
+                        ]
+                    , resultBox
+                    ]
+                , column [ width fill, height fill ] [ html (treeCanvas model.tree) ]
                 ]
-            , column [ width fill, height fill ] []
             ]
         )
 
