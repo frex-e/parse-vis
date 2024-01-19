@@ -14,3 +14,11 @@ jobs:
           node-version: "20.x"
       - run: npm install elm
       - run: npx elm make src/Main.elm --outpute=public/index.html
+        name: build
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == "refs/heads/main"
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
