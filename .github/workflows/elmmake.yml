@@ -5,6 +5,8 @@ run-name: Site is being built.
 on: [push]
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
 
     steps:
