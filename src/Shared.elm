@@ -1,5 +1,6 @@
-module Shared exposing (LayoutNode, Mode, Node, ParserResult)
+module Shared exposing (LayoutNode, Mode, Node, ParserResult, greyScale)
 
+import Element
 import Parser exposing (DeadEnd)
 import Tree exposing (Tree(..))
 
@@ -7,7 +8,7 @@ import Tree exposing (Tree(..))
 type alias Mode =
     { name : String
     , evaluate : String -> String
-    , createTree : String -> ParserResult (Tree LayoutNode)
+    , createTree : String -> Maybe (Tree LayoutNode)
     }
 
 
@@ -24,3 +25,8 @@ type alias LayoutNode =
 
 type alias ParserResult e =
     Result (List DeadEnd) e
+
+
+greyScale : Float -> Element.Color
+greyScale f =
+    Element.rgb f f f

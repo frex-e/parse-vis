@@ -7,11 +7,11 @@ import Path
 import Shape
 import Shared exposing (LayoutNode, ParserResult)
 import Tree exposing (Tree(..))
-import TypedSvg exposing (g, rect, svg)
-import TypedSvg.Attributes exposing (fill, height, rx, stroke, transform, width, x, y)
+import TypedSvg exposing (g, rect, svg, text_)
+import TypedSvg.Attributes exposing (fill, height, rx, stroke, textAnchor, transform, width, x, y)
 import TypedSvg.Attributes.InPx as InPx
-import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types exposing (Paint(..), Transform(..))
+import TypedSvg.Core exposing (Svg, text)
+import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..), Transform(..))
 
 
 viewTree : Tree LayoutNode -> Svg a
@@ -31,31 +31,35 @@ viewTree tree =
             |> Tree.toList
             |> List.map
                 (\item ->
-                    rect
-                        [ InPx.rx 5
-                        , InPx.width item.width
-                        , InPx.height item.height
-                        , InPx.x item.x
-                        , InPx.y item.y
-                        , fill (Paint (Color.rgb 0.5 0.5 0.5))
-                        , stroke (Paint (Color.rgb 1 1 1))
+                    g [ transform [ Translate item.x item.y ] ]
+                        [ rect
+                            [ InPx.rx 5
+                            , InPx.width item.width
+                            , InPx.height item.height
+
+                            -- , InPx.x item.x
+                            -- , InPx.y item.y
+                            , fill (Paint (Color.rgb 0.5 0.5 0.5))
+                            , stroke (Paint (Color.rgb 1 1 1))
+                            ]
+                            []
+                        , text_ [ InPx.x (item.width / 2), InPx.y (item.height / 2), textAnchor AnchorMiddle ] [ text item.node.label ]
                         ]
-                        []
                 )
             |> g []
         ]
 
 
-treeCanvas : ParserResult (Tree LayoutNode) -> Html msg
+treeCanvas : Maybe (Tree LayoutNode) -> Html msg
 treeCanvas tree =
     svg
         [ Html.Attributes.style "width" "100%"
         , Html.Attributes.style "height" "100%"
         ]
         (case tree of
-            Ok t ->
+            Just t ->
                 [ viewTree t ]
 
-            Err _ ->
+            Nothing ->
                 []
         )

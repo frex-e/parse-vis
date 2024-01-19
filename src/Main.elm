@@ -5,6 +5,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Basic
 import Browser
+import Colorscheme
 import Dict
 import Display exposing (treeCanvas)
 import Element exposing (column, el, fill, focused, height, html, htmlAttribute, padding, paddingXY, paragraph, rgb, row, text, width)
@@ -36,7 +37,7 @@ main =
 type alias Model =
     { content : String
     , result : String
-    , tree : ParserResult (Tree LayoutNode)
+    , tree : Maybe (Tree LayoutNode)
     , mode : Mode
     }
 
@@ -45,7 +46,7 @@ init : Model
 init =
     { content = ""
     , result = ""
-    , tree = Err []
+    , tree = Nothing
     , mode = Basic.mode
     }
 
@@ -119,7 +120,22 @@ view model =
                 , Background.color (rgb 0.2 0.2 0.2)
                 ]
                 -- TODO Change to button
-                (List.map (\m -> button [ paddingXY 2 0 ] { onPress = Just <| ChangeMode m, label = text m.name }) modes)
+                (List.map
+                    (\m ->
+                        button
+                            [ paddingXY 4 0
+                            , if model.mode.name == m.name then
+                                Font.color Colorscheme.yellow
+
+                              else
+                                Font.color Colorscheme.text
+                            ]
+                            { onPress = Just <| ChangeMode m
+                            , label = text m.name
+                            }
+                    )
+                    modes
+                )
     in
     -- Main Layout
     --

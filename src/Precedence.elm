@@ -9,8 +9,51 @@ import Tree exposing (Tree(..))
 type Expression
     = Bracket Expression
     | EFloat Float
-    | UnaryOp String Expression
-    | BinaryOp Expression String Expression
+    | UnaryExp UnaryOperation Expression
+    | BinaryExp Expression BinaryOperation Expression
+
+
+type UnaryOperation
+    = Negate
+
+
+type BinaryOperation
+    = Add
+    | Subtract
+    | Multiply
+    | Divide
+
+
+toOp : BinaryOperation -> (Float -> Float -> Float)
+toOp op =
+    case op of
+        Add ->
+            (+)
+
+        Subtract ->
+            (-)
+
+        Multiply ->
+            (*)
+
+        Divide ->
+            (/)
+
+
+printBinaryOp : BinaryOperation -> String
+printBinaryOp op =
+    case op of
+        Add ->
+            "+"
+
+        Subtract ->
+            "-"
+
+        Multiply ->
+            "*"
+
+        Divide ->
+            "/"
 
 
 expression : Parser Expression
@@ -19,10 +62,10 @@ expression =
 
 
 precedences =
-    [ [ "+", "-" ], [ "*", "/" ] ]
+    [ [ ( Add, "+" ), ( Subtract, "-" ) ], [ ( Multiply, "*" ), ( Divide, "/" ) ] ]
 
 
-binary : List (List String) -> Parser Expression
+binary : List (List ( BinaryOperation, String )) -> Parser Expression
 binary l =
     case l of
         [] ->
@@ -36,9 +79,9 @@ binary l =
                             (\prev ->
                                 oneOf
                                     (List.map
-                                        (\s ->
-                                            succeed (\next -> Loop (BinaryOp prev s next))
-                                                |. symbol s
+                                        (\( op, str ) ->
+                                            succeed (\next -> Loop (BinaryExp prev op next))
+                                                |. symbol str
                                                 |. spaces
                                                 |= binary lower
                                         )
@@ -52,7 +95,7 @@ binary l =
 unary : Parser Expression
 unary =
     oneOf
-        [ succeed (UnaryOp "-")
+        [ succeed (UnaryExp Negate)
             |. symbol "-"
             |. spaces
             |= primary
@@ -75,9 +118,68 @@ primary =
         ]
 
 
+evalTree : Expression -> Float
+evalTree e =
+    case e of
+        Bracket ep ->
+            evalTree ep
+
+        EFloat f ->
+            f
+
+        UnaryExp Negate ep ->
+            negate <| evalTree ep
+
+        BinaryExp a op b ->
+            toOp op (evalTree a) (evalTree b)
+
+
+toTreeAux : Expression -> Tree Node
+toTreeAux e =
+    case e of
+        Bracket ep ->
+            Tree { width = 30, height = 30, label = "()" } [ toTreeAux ep ]
+
+        EFloat f ->
+            Tree { width = 30, height = 30, label = String.fromFloat f } []
+
+        UnaryExp Negate ep ->
+            Tree { width = 30, height = 30, label = "-" } [ toTreeAux ep ]
+
+        BinaryExp a op b ->
+            Tree { width = 30, height = 30, label = printBinaryOp op } [ toTreeAux a, toTreeAux b ]
+
+
+toTree : Expression -> Tree LayoutNode
+toTree t =
+    Hierarchy.tidy
+        [ Hierarchy.nodeSize (\{ width, height } -> ( width, height ))
+        , Hierarchy.none
+        , Hierarchy.parentChildMargin 10
+        , Hierarchy.peerMargin 10
+        ]
+        (toTreeAux t)
+
+
 mode : Mode
 mode =
     { name = "Precedence"
-    , evaluate = \s -> run (expression |. end) s |> Debug.toString
-    , createTree = \_ -> Ok <| Tree { x = 0, y = 0, width = 0, height = 0, node = { width = 0, height = 0, label = "" } } []
+    , evaluate =
+        \s ->
+            case run (expression |. end) s of
+                Ok res ->
+                    evalTree res |> String.fromFloat
+
+                Err err ->
+                    Debug.toString err
+
+    -- , createTree = \_ -> Just <| Tree { x = 0, y = 0, width = 0, height = 0, node = { width = 0, height = 0, label = "" } } []
+    , createTree =
+        \s ->
+            case run (expression |. end) s of
+                Ok res ->
+                    Just <| toTree res
+
+                Err _ ->
+                    Nothing
     }

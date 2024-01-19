@@ -123,7 +123,13 @@ mode =
                 Err _ ->
                     "Error"
     , createTree =
-        \s -> Result.map layoutTree <| parse s
+        \s ->
+            case Result.map layoutTree <| parse s of
+                Ok res ->
+                    Just res
+
+                Err _ ->
+                    Nothing
     }
 
 
