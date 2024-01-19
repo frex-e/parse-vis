@@ -7,7 +7,7 @@ import Basic
 import Browser
 import Dict
 import Display exposing (treeCanvas)
-import Element exposing (column, el, fill, focused, height, html, htmlAttribute, padding, paragraph, rgb, row, text, width)
+import Element exposing (column, el, fill, focused, height, html, htmlAttribute, padding, paddingXY, paragraph, rgb, row, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events exposing (onClick)
@@ -119,7 +119,7 @@ view model =
                 , Background.color (rgb 0.2 0.2 0.2)
                 ]
                 -- TODO Change to button
-                (List.map (\m -> el [ onClick <| ChangeMode m ] (text m.name)) modes)
+                (List.map (\m -> button [ paddingXY 2 0 ] { onPress = Just <| ChangeMode m, label = text m.name }) modes)
     in
     -- Main Layout
     --
