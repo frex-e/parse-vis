@@ -51,8 +51,15 @@ svgWidthCmd =
     Browser.Dom.getElement "tree" |> Task.attempt GotSvg
 
 
-svgWidthCmdWithDelay =
-    Process.sleep 50 |> Task.andThen (\_ -> Browser.Dom.getElement "tree") |> Task.attempt GotSvg
+initCmd =
+    Process.sleep 50
+        |> Task.andThen (\_ -> Browser.Dom.focus "input")
+        |> Task.andThen (\_ -> Browser.Dom.getElement "tree")
+        |> Task.attempt GotSvg
+
+
+focusCmd =
+    Browser.Dom.focus "input" |> Task.attempt (\_ -> None)
 
 
 init : () -> ( Model, Cmd Msg )
@@ -60,10 +67,10 @@ init _ =
     ( { content = ""
       , result = ""
       , tree = Nothing
-      , mode = Basic.mode
+      , mode = Precedence.mode
       , svgWidth = 400
       }
-    , svgWidthCmd
+    , initCmd
     )
 
 
@@ -89,14 +96,14 @@ update msg model =
             ( model, Cmd.none )
 
         ChangeMode m ->
-            ( { init_model | mode = m }, svgWidthCmd )
+            ( { init_model | mode = m }, focusCmd )
 
         Run ->
             ( { model
                 | tree = model.mode.createTree model.content
                 , result = model.mode.evaluate model.content
               }
-            , svgWidthCmdWithDelay
+            , svgWidthCmd
             )
 
         GotSvg (Ok el) ->
@@ -120,6 +127,7 @@ view model =
                 , Border.rounded 0
                 , height fill
                 , onShiftEnter Run
+                , htmlAttribute (id "input")
                 ]
                 { text = model.content
                 , onChange = EditCode
