@@ -5,6 +5,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Basic
 import Browser
+import Browser.Dom
 import Colorscheme
 import Dict
 import Display exposing (treeCanvas)
@@ -15,10 +16,13 @@ import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input exposing (button, labelHidden, multiline)
 import Html exposing (Html)
+import Html.Attributes exposing (id)
 import Html.Events
 import Json.Decode as Decode
 import Precedence
+import Process
 import Shared exposing (LayoutNode, Mode, ParserResult)
+import Task
 import Tree exposing (Tree(..))
 
 
@@ -31,7 +35,7 @@ modes =
 
 
 main =
-    Browser.sandbox { init = init, update = update, view = view }
+    Browser.element { init = init, update = update, view = view, subscriptions = \_ -> Sub.none }
 
 
 type alias Model =
@@ -39,16 +43,28 @@ type alias Model =
     , result : String
     , tree : Maybe (Tree LayoutNode)
     , mode : Mode
+    , svgWidth : Float
     }
 
 
-init : Model
-init =
-    { content = ""
-    , result = ""
-    , tree = Nothing
-    , mode = Basic.mode
-    }
+svgWidthCmd =
+    Browser.Dom.getElement "tree" |> Task.attempt GotSvg
+
+
+svgWidthCmdWithDelay =
+    Process.sleep 50 |> Task.andThen (\_ -> Browser.Dom.getElement "tree") |> Task.attempt GotSvg
+
+
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( { content = ""
+      , result = ""
+      , tree = Nothing
+      , mode = Basic.mode
+      , svgWidth = 400
+      }
+    , svgWidthCmd
+    )
 
 
 type Msg
@@ -56,25 +72,38 @@ type Msg
     | None
     | Run
     | ChangeMode Mode
+    | GotSvg (Result Browser.Dom.Error Browser.Dom.Element)
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        ( init_model, _ ) =
+            init ()
+    in
     case msg of
         EditCode str ->
-            { model | content = str }
+            ( { model | content = str }, Cmd.none )
 
         None ->
-            model
+            ( model, Cmd.none )
 
         ChangeMode m ->
-            { init | mode = m }
+            ( { init_model | mode = m }, svgWidthCmd )
 
         Run ->
-            { model
+            ( { model
                 | tree = model.mode.createTree model.content
                 , result = model.mode.evaluate model.content
-            }
+              }
+            , svgWidthCmdWithDelay
+            )
+
+        GotSvg (Ok el) ->
+            ( { model | svgWidth = el.element.width }, Cmd.none )
+
+        GotSvg (Err _) ->
+            ( model, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -160,7 +189,7 @@ view model =
                         ]
                     , resultBox
                     ]
-                , column [ width fill, height fill ] [ html (treeCanvas model.tree) ]
+                , column [ width fill, height fill, htmlAttribute <| id "tree" ] [ html (treeCanvas model.svgWidth model.tree) ]
                 ]
             ]
         )

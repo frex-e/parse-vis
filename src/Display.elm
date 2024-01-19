@@ -16,7 +16,9 @@ import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..), Transform(..))
 
 viewTree : Tree LayoutNode -> Svg a
 viewTree tree =
-    g [ transform [ Translate 200 0 ] ]
+    g
+        [-- transform [ Translate 200 0 ]
+        ]
         [ tree
             |> Tree.links
             |> List.map
@@ -50,15 +52,15 @@ viewTree tree =
         ]
 
 
-treeCanvas : Maybe (Tree LayoutNode) -> Html msg
-treeCanvas tree =
+treeCanvas : Float -> Maybe (Tree LayoutNode) -> Html msg
+treeCanvas width tree =
     svg
         [ Html.Attributes.style "width" "100%"
         , Html.Attributes.style "height" "100%"
         ]
         (case tree of
             Just t ->
-                [ viewTree t ]
+                [ g [ transform [ Translate (width / 2) 100 ] ] [ viewTree t ] ]
 
             Nothing ->
                 []
